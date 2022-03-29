@@ -1,5 +1,3 @@
-///! https://github.com/rust-osdev/bootloader/blob/main/examples/basic/simple_boot/src/main.rs
-
 use std::{
     path::{Path, PathBuf},
     process::Command,
@@ -14,11 +12,14 @@ fn main() {
         let path = PathBuf::from(args.next().unwrap());
         path.canonicalize().unwrap()
     };
-    let no_boot = match args.next().and_then(|arg| arg.as_str()) {
-        Some("--no-run") => true,
-        Some(other) => panic!("unexpected argument `{}`", other),
-        None => false,
-    }
+    let no_boot = if let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--no-run" => true,
+            other => panic!("unexpected argument `{}`", other),
+        }
+    } else {
+        false
+    };
 
     let bios = create_disk_images(&kernel_binary_path);
 
