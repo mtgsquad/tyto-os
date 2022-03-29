@@ -7,3 +7,15 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bootloader = "0.10.12"
+
+[build-dependencies]
+bootloader-locator = "0.0"
+locate-cargo-manifest = "0.2"
+
+[profile.release]
+panic = "abort"
+lto = true
+
+[profile.dev]
+panic = "abort"
