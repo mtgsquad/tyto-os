@@ -1,6 +1,7 @@
 use std::{
     path::{Path, PathBuf},
     process::Command,
+    fs::rename,
 };
 
 const RUN_ARGS: &[&str] = &["--no-reboot", "-s"];
@@ -21,10 +22,10 @@ fn main() {
         false
     };
 
-    let bios = create_disk_images(&kernel_binary_path);
+    let DiskImages { disk_image: bios, iso_image: iso } = create_disk_images(&kernel_binary_path);
 
     if no_boot {
-        println!("Created disk image at `{}`", bios.display());
+        println!("Created disk image at `{}` and `{}`", bios.display(), iso.display());
         return;
     }
 
@@ -40,9 +41,10 @@ fn main() {
     }
 }
 
-pub fn create_disk_images(kernel_binary_path: &Path) -> PathBuf {
+pub fn create_disk_images(kernel_binary_path: &Path) -> DiskImages {
     let bootloader_manifest_path = bootloader_locator::locate_bootloader("bootloader").unwrap();
     let kernel_manifest_path = locate_cargo_manifest::locate_manifest().unwrap();
+    let target_dir = kernel_binary_path.parent().unwrap();
 
     let mut build_cmd = Command::new(env!("CARGO"));
     build_cmd.current_dir(bootloader_manifest_path.parent().unwrap());
@@ -64,15 +66,27 @@ pub fn create_disk_images(kernel_binary_path: &Path) -> PathBuf {
     }
 
     let kernel_binary_name = kernel_binary_path.file_name().unwrap().to_str().unwrap();
-    let disk_image = kernel_binary_path
-        .parent()
-        .unwrap()
-        .join(format!("boot-bios-{}.img", kernel_binary_name));
+
+    let disk_image = target_dir.join(format!("boot-bios-{}.img", kernel_binary_name));
+    
     if !disk_image.exists() {
         panic!(
             "Disk image does not exist at {} after bootloader build",
             disk_image.display()
         );
     }
-    disk_image
+    
+    let iso_image = target_dir.join(format!("boot-bios-{}.iso", kernel_binary_name);
+    
+    copy(disk_image, iso_image).unwrap();
+        
+    DiskImages {
+        iso_image,
+        disk_image,
+    }
+}
+    
+struct DiskImages {
+    iso_image: PathBuf,
+    disk_image: PathBuf,
 }
