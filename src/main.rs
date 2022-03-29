@@ -6,7 +6,7 @@ use core::panic::PanicInfo;
 
 entry_point!(kernel_main);
 
-fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
+fn kernel_main(_boot_info: &'static mut BootInfo) -> ! {
     #[allow(clippy::empty_loop)]
     loop {}
 }

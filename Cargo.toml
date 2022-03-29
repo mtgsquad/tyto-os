@@ -1,5 +1,5 @@
 [package]
-name = "untitled-os"
+name = "kernel"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
@@ -9,13 +9,12 @@ license = "MIT"
 [dependencies]
 bootloader = "0.10.12"
 
-[build-dependencies]
-bootloader-locator = "0.0"
-locate-cargo-manifest = "0.2"
-
 [profile.release]
 panic = "abort"
 lto = true
 
 [profile.dev]
 panic = "abort"
+
+[workspace]
+members = [".", "boot"]
