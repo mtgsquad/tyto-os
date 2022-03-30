@@ -8,7 +8,9 @@ license = "MIT"
 
 [dependencies]
 bootloader = "0.10"
-spin = "0.9"
+spin = { version = "0.9", features = ["lazy"] }
+uart_16550 = "0.2"
+x86_64 = "0.14"
 
 [profile.release]
 panic = "abort"
