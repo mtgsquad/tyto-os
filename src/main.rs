@@ -14,10 +14,13 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
         let info = framebuffer.info();
 
-        for y in 0..info.horizontal_resolution * info.bytes_per_pixel {
-            for x in 0..info.vertical_resolution * info.bytes_per_pixel {
-                let color = if x % 2 == 0 { 0x00 } else { 0xFF };
-                framebuffer.buffer_mut()[(y + x) / info.bytes_per_pixel] = color;
+        serial_println!("{}", framebuffer.buffer().len());
+
+        for y in 0..info.vertical_resolution {
+            for x in 0..info.horizontal_resolution {
+                let byte = &mut framebuffer.buffer_mut()[((y + x) * info.horizontal_resolution)];
+
+                *byte = 0xFF;
             }
         }
     }
