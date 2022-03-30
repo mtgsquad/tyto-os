@@ -5,4 +5,4 @@ pub fn init_idt() {
     idt.breakpoint.set_handler_fn(breakpoint_handler);
 }
 
-extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {}
+extern "x86-interrupt" fn breakpoint_handler(_stack_frame: InterruptStackFrame) {}
