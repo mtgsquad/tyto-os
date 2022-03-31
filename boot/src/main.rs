@@ -1,5 +1,4 @@
 use std::{
-    fs::copy,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -22,24 +21,17 @@ fn main() {
         false
     };
 
-    let DiskImages {
-        disk_image: bios,
-        iso_image: iso,
-    } = create_disk_images(&kernel_binary_path);
+    let disk_image = create_disk_images(&kernel_binary_path);
 
     if no_boot {
-        println!(
-            "Created disk image at `{}` and `{}`",
-            bios.display(),
-            iso.display()
-        );
+        println!("Created disk image at `{}`", disk_image.display(),);
         return;
     }
 
     let mut run_cmd = Command::new("qemu-system-x86_64");
     run_cmd
         .arg("-drive")
-        .arg(format!("format=raw,file={}", bios.display()));
+        .arg(format!("format=raw,file={}", disk_image.display()));
     run_cmd.args(RUN_ARGS);
 
     let exit_status = run_cmd
@@ -50,7 +42,7 @@ fn main() {
     }
 }
 
-pub fn create_disk_images(kernel_binary_path: &Path) -> DiskImages {
+pub fn create_disk_images(kernel_binary_path: &Path) -> PathBuf {
     let bootloader_manifest_path = bootloader_locator::locate_bootloader("bootloader").unwrap();
     let kernel_manifest_path = locate_cargo_manifest::locate_manifest().unwrap();
     let target_dir = kernel_binary_path.parent().unwrap();
@@ -85,17 +77,5 @@ pub fn create_disk_images(kernel_binary_path: &Path) -> DiskImages {
         );
     }
 
-    let iso_image = target_dir.join(format!("boot-bios-{}.iso", kernel_binary_name));
-
-    copy(&disk_image, &iso_image).unwrap();
-
-    DiskImages {
-        iso_image,
-        disk_image,
-    }
-}
-
-pub struct DiskImages {
-    iso_image: PathBuf,
-    disk_image: PathBuf,
+    disk_image
 }

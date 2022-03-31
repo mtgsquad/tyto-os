@@ -13,8 +13,8 @@ pub mod serial;
 entry_point!(kernel_main);
 
 fn kernel_main(_boot_info: &'static mut BootInfo) -> ! {
-    // let mode = Graphics640x480x16::new();
-    // mode.set_mode();
+    let mode = Graphics640x480x16::new();
+    mode.set_mode();
     // mode.clear_screen(Color16::Black);
     // mode.draw_line((80, 60), (80, 420), Color16::White);
     // mode.draw_line((80, 60), (540, 60), Color16::White);
