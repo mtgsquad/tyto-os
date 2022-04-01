@@ -1,39 +1,12 @@
-#![no_std]
 #![no_main]
-#![feature(abi_x86_interrupt)]
+#![no_std]
+#![feature(abi_efiapi)]
 
-use bootloader::{entry_point, BootInfo};
-use core::{fmt::Write, panic::PanicInfo};
+use uefi::prelude::*;
 
-pub mod interrupts;
-pub mod serial;
+#[entry]
+fn main(_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
+    uefi_services::init(&mut system_table).unwrap();
 
-entry_point!(kernel_main);
-
-fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
-    if let Some(framebuffer) = boot_info.framebuffer.as_mut() {
-        let info = framebuffer.info();
-
-        for (i, byte) in framebuffer.buffer_mut().iter_mut().enumerate() {
-            let y = i % info.horizontal_resolution;
-            let x = i % info.vertical_resolution;
-
-            *byte = if x % 2 == 0 { 0x00 } else { 0xFF };
-        }
-    }
-
-    #[allow(clippy::empty_loop)]
-    loop {}
-}
-
-/// This function is called on panic.
-#[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    {
-        let mut serial_port = unsafe { uart_16550::SerialPort::new(0x3F8) };
-        serial_port.init();
-        write!(serial_port, "Kernel panic: {}", info).expect("Printing to serial failed");
-    }
-
-    loop {}
+    Status::SUCCESS
 }
