@@ -1,6 +1,7 @@
-[unstable]
-build-std = ["core", "compiler_builtins", "alloc"]
-build-std-features = ["compiler-builtins-mem"]
-
 [target.'cfg(target_os = "uefi")']
-runner = "cargo run --package qemu --"
+runner = "cargo run --package boot --"
+
+[alias]
+kbuild = "build --target x86_64-unknown-uefi -Zbuild-std=core -Zbuild-std-features=compiler-builtins-mem"
+kimage = "run --target x86_64-unknown-uefi -Zbuild-std=core -Zbuild-std-features=compiler-builtins-mem"
+krun = "run --target x86_64-unknown-uefi -Zbuild-std=core -Zbuild-std-features=compiler-builtins-mem -- run"

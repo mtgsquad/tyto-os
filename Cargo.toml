@@ -1,11 +1,8 @@
-cargo-features = ["per-package-target"]
-
 [package]
 name = "kernel"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-forced-target = "x86_64-unknown-uefi"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -16,9 +13,10 @@ uefi-services = "0.12"
 [profile.release]
 panic = "abort"
 lto = true
+strip = true
 
 [profile.dev]
 panic = "abort"
 
 [workspace]
-members = [".", "qemu"]
+members = [".", "boot"]
