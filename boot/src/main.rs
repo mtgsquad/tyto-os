@@ -7,24 +7,34 @@ use std::{
 fn main() {
     let kernel_binary = env::args_os().nth(1).unwrap();
     let kernel_binary = &absolute(kernel_binary);
+    println!("{:?}", kernel_binary);
     let target_dir = kernel_binary.parent().unwrap();
     let qemu_fs_dir = &target_dir.join("qemu_fs");
     let efi_boot_dir = &qemu_fs_dir.join("EFI").join("Boot");
-    let ovmf = Path::new(concat!(env!("OUT_DIR"), "/OVMF.fd"));
+    let out_dir = Path::new(env!("OUT_DIR"));
 
     fs::create_dir_all(efi_boot_dir).unwrap();
-    fs::copy(kernel_binary, efi_boot_dir.join("BootX64.efi")).unwrap();
+    fs::copy(kernel_binary, efi_boot_dir.join("bootx64.efi")).unwrap();
 
     let mut qemu = Command::new("qemu-system-x86_64");
     qemu.arg("-drive").arg(format!(
         "format=raw,file=fat:rw:file={}",
         qemu_fs_dir.display()
     ));
-    qemu.arg("-bios").arg(ovmf.to_str().unwrap());
+    qemu.arg("-drive").arg(format!(
+        "if=pflash,format=raw,readonly=on,file={}",
+        out_dir.join("OVMF_CODE.fd").display()
+    ));
+    qemu.arg("-drive").arg(format!(
+        "if=pflash,format=raw,readonly=on,file={}",
+        out_dir.join("OVMF_VARS.fd").display()
+    ));
     qemu.arg("-machine").arg("q35");
     qemu.arg("-serial").arg("stdio");
     qemu.arg("-net").arg("none");
-    qemu.arg("-m").arg("1024");
+    qemu.arg("-m").arg("256M");
+
+    println!("{:?}", qemu);
 
     // run the command
     let exit_status = qemu.status().unwrap();
@@ -35,8 +45,7 @@ fn main() {
 
 fn absolute(path: impl AsRef<Path>) -> PathBuf {
     let canonicalized = path.as_ref().canonicalize().unwrap();
-    let canonicalized = canonicalized
-        .strip_prefix(r"\\?\")
-        .unwrap_or(&canonicalized);
-    canonicalized.to_owned()
+    let canonicalized = canonicalized.to_str().unwrap();
+
+    PathBuf::from(canonicalized.strip_prefix(r"\\?\").unwrap_or(canonicalized))
 }
