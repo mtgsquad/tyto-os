@@ -16,7 +16,6 @@ fn main() {
     fs::create_dir_all(efi_boot_dir).unwrap();
     fs::copy(kernel_binary, efi_boot_dir.join("BootX64.efi")).unwrap();
 
-    // TODO: figure out why the hell this doesn't work.
     let mut qemu = Command::new("qemu-system-x86_64");
     qemu.arg("-drive")
         .arg(format!("format=raw,file=fat:rw:file={}", esp_dir.display()));
@@ -32,6 +31,8 @@ fn main() {
     qemu.arg("-serial").arg("stdio");
     qemu.arg("-net").arg("none");
     qemu.arg("-m").arg("256M");
+    qemu.arg("-nodefaults");
+    qemu.arg("-vga").arg("std");
 
     println!("{:?}", qemu);
 
