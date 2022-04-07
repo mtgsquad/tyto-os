@@ -5,7 +5,7 @@
 use uefi::{prelude::*, proto::console::gop::GraphicsOutput};
 
 #[entry]
-fn main(_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
+fn main(image: Handle, mut system_table: SystemTable<Boot>) -> Status {
     uefi_services::init(&mut system_table).unwrap();
 
     let mut framebuffer = unsafe {

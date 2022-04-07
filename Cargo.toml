@@ -1,10 +1,18 @@
+[package]
+name = "tyto"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+uefi = "0.15"
+uefi-services = "0.12"
+
 [profile.release]
 panic = "abort"
 lto = true
 strip = true
 
-[profile.dev]
-panic = "abort"
-
 [workspace]
-members = ["bootloader", "boot", "runtime"]
+members = [".", "boot"]
