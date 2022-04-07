@@ -8,4 +8,3 @@ edition = "2021"
 [dependencies]
 uefi = "0.15"
 uefi-services = "0.12"
-runtime = { path = "../runtime" }

@@ -8,8 +8,7 @@ use uefi::{prelude::*, proto::console::gop::GraphicsOutput};
 fn main(_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     uefi_services::init(&mut system_table).unwrap();
 
-    // clear the screen
-    for i in 0..unsafe {
+    let mut framebuffer = unsafe {
         if let Ok(gop) = system_table
             .boot_services()
             .locate_protocol::<GraphicsOutput>()
@@ -19,11 +18,14 @@ fn main(_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
             return Status::NO_MEDIA;
         }
     }
-    .frame_buffer()
-    .size()
-    {
+    .frame_buffer();
+
+    let framebuffer_ptr = framebuffer.as_mut_ptr();
+
+    // clear the screen
+    for i in 0..framebuffer.size() {
         unsafe {
-            (i as *mut u8).write_volatile(0x00);
+            framebuffer_ptr.add(i).write_volatile(0x00);
         }
     }
 
