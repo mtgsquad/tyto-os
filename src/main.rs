@@ -20,12 +20,10 @@ fn main(image: Handle, mut system_table: SystemTable<Boot>) -> Status {
     }
     .frame_buffer();
 
-    let framebuffer_ptr = framebuffer.as_mut_ptr();
-
     // clear the screen
     for i in 0..framebuffer.size() {
         unsafe {
-            framebuffer_ptr.add(i).write_volatile(0x00);
+            framebuffer.write_value(i, 0x00)
         }
     }
 
