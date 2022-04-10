@@ -1,14 +1,14 @@
-#![no_main]
 #![no_std]
+#![no_main]
 #![feature(abi_efiapi)]
-
-pub mod device;
 
 use uefi::{prelude::*, proto::console::gop::GraphicsOutput};
 
 #[entry]
-fn main(image: Handle, mut system_table: SystemTable<Boot>) -> Status {
+fn main(_image: Handle, mut system_table: SystemTable<Boot>) -> Status {
     uefi_services::init(&mut system_table).unwrap();
+
+    tyto::init();
 
     let mut framebuffer = if let Ok(gop) = system_table
         .boot_services()

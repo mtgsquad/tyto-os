@@ -1,7 +1,5 @@
-# Untitled Kernel
+# Tyto OS
 
-An Untitled Kernel. Nothing to see here.
+An operating system named after a bird.
 
-## Installation
-
-Use [`cargo-make`](https://github.com/sagiegurari/cargo-make) to build and run this kernel
+The code is heavily inspired by the [phobos project](https://github.com/yakuri354/phobos).
