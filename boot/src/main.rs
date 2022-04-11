@@ -33,6 +33,7 @@ fn main() {
     qemu.arg("-m").arg("256M");
     qemu.arg("-nodefaults");
     qemu.arg("-vga").arg("std");
+    qemu.arg("-no-reboot");
 
     println!("{:?}", qemu);
 

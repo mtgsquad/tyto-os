@@ -68,6 +68,4 @@ pub async fn print_keypresses() {
     }
 }
 
-pub(crate) fn init() {
-    info!("Initializing PS/2 keyboard drivers.");
-}
+pub(crate) fn init() {}
