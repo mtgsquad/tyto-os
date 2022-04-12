@@ -212,10 +212,6 @@ fn init_fb(system_table: &mut SystemTable<Boot>) -> (FrameBuffer<'static>, ModeI
         }
     }
 
-    if selected_mode.is_none() {
-        panic!("No supported GOP modes found");
-    };
-
     (gop.frame_buffer(), *selected_mode.unwrap().info())
 }
 
