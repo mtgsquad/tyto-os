@@ -7,7 +7,7 @@ extern crate alloc;
 use arrayvec::ArrayVec;
 use core::mem::{size_of, MaybeUninit};
 
-use log::{error, info};
+use log::info;
 use uefi::{
     prelude::*,
     table::boot::{AllocateType, MemoryType},
@@ -22,7 +22,7 @@ use x86_64::{
 
 use alloc::{borrow::ToOwned, format, vec, vec::Vec};
 use boot_lib::{
-    KernelArgs, KernelEntryPoint, KERNEL_ARGS_MEM_TYPE, KERNEL_STACK_BOTTOM, KERNEL_STACK_MEM_TYPE,
+    KernelArgs, KERNEL_ARGS_MEM_TYPE, KERNEL_STACK_BOTTOM, KERNEL_STACK_MEM_TYPE,
     KERNEL_STACK_SIZE_PAGES, PHYS_MAP_OFFSET, PTE_MEM_TYPE,
 };
 use core::{arch::asm, iter::FromIterator, ptr::addr_of_mut};
@@ -36,8 +36,6 @@ use x86_64::structures::paging::{
 };
 
 use kernel::kernel_main;
-
-mod elf;
 
 struct UefiAlloc();
 
@@ -338,7 +336,7 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
         .memory_map(&mut mmap_buf)
         .expect("Failed to get memory map");
 
-    let mmap = ArrayVec::<_, 512>::from_iter(mmap_it.map(Clone::clone));
+    let mut mmap = ArrayVec::<_, 512>::from_iter(mmap_it.map(Clone::clone));
 
     info!("Loading kernel");
 
@@ -358,7 +356,7 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
 
     info!("Initializing kernel args struct");
 
-    let mut args = unsafe {
+    let args = unsafe {
         &mut *((system_table
             .boot_services()
             .allocate_pages(
@@ -372,13 +370,6 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     };
 
     let args_ptr = args.as_mut_ptr();
-
-    let (_, mmap_it) = system_table
-        .boot_services()
-        .memory_map(&mut mmap_buf)
-        .expect("Failed to get memory map");
-
-    let mut mmap = ArrayVec::<_, 512>::from_iter(mmap_it.map(Clone::clone));
 
     match page_table.translate(VirtAddr::new(kernel_main as usize as u64)) {
         TranslateResult::Mapped { flags, .. } => unsafe {
@@ -403,13 +394,11 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
                 )
                 .expect("Setting UEFI memory map failed");
 
-            unsafe {
-                addr_of_mut!((*args_ptr).uefi_rst).write(uefi_rst);
-                addr_of_mut!((*args_ptr).mmap).write(mmap);
-                addr_of_mut!((*args_ptr).fb_addr)
-                    .write((fb.as_mut_ptr() as u64 + PHYS_MAP_OFFSET) as _);
-                addr_of_mut!((*args_ptr).fb_info).write(fb_mode);
-            }
+            addr_of_mut!((*args_ptr).uefi_rst).write(uefi_rst);
+            addr_of_mut!((*args_ptr).mmap).write(mmap);
+            addr_of_mut!((*args_ptr).fb_addr)
+                .write((fb.as_mut_ptr() as u64 + PHYS_MAP_OFFSET) as _);
+            addr_of_mut!((*args_ptr).fb_info).write(fb_mode);
 
             let args_ptr = args.assume_init_mut();
 
@@ -422,14 +411,16 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
 /// Switches the stack and calls the kernel entry point according
 /// to the Microsoft x64 calling convention
 fn execute_kernel(args_ptr: *mut KernelArgs, kernel_main: fn(*mut KernelArgs) -> !) -> ! {
-    asm!(
-        "mov rsp, r8",
-        "mov rbp, r8",
-        "jmp rdx",
-        in("r8") KERNEL_STACK_BOTTOM,
-        in("rcx") args_ptr,
-        in("rdx") kernel_main as *const u8,
-    );
+    unsafe {
+        asm!(
+            "mov rsp, r8",
+            "mov rbp, r8",
+            "jmp rdx",
+            in("r8") KERNEL_STACK_BOTTOM,
+            in("rcx") args_ptr,
+            in("rdx") kernel_main as *const u8,
+        );
+    }
 
     unreachable!()
 }

@@ -1,4 +1,3 @@
-use crate::spin::{Lazy, Mutex};
 use core::{
     pin::Pin,
     task::{Context, Poll},
@@ -10,6 +9,7 @@ use futures_util::{
 };
 use log::{info, warn};
 use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
+use spin::{Lazy, Mutex};
 
 static SCANCODE_QUEUE: Lazy<Mutex<ArrayQueue<u8>>> = Lazy::new(|| Mutex::new(ArrayQueue::new(100)));
 static WAKER: AtomicWaker = AtomicWaker::new();

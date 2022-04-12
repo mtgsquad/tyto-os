@@ -7,7 +7,6 @@ use log::info;
 
 pub mod device;
 pub mod interrupt;
-pub mod spin;
 pub mod task;
 
 /// Initialize the kernel.
@@ -29,9 +28,10 @@ pub fn init() {
 
 #[allow(clippy::not_unsafe_ptr_arg_deref)] // we know that the pointer lasts for 'static
 pub fn kernel_main(args: *mut boot_lib::KernelArgs) -> ! {
-    let args = unsafe { &mut *args };
+    let _args = unsafe { &mut *args };
 
     init();
 
+    #[allow(clippy::empty_loop)]
     loop {}
 }

@@ -20,3 +20,4 @@ log = "0.4"
 x86_64 = "0.14"
 ps2 = "0.2"
 boot_lib = { path = "../boot_lib" }
+spin = "0.9"
