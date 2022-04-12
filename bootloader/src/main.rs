@@ -5,7 +5,6 @@
 extern crate alloc;
 
 use arrayvec::ArrayVec;
-use core::mem::{size_of, MaybeUninit};
 
 use log::info;
 use uefi::{
@@ -14,7 +13,6 @@ use uefi::{
 };
 
 use x86_64::{
-    align_up,
     registers::control::{Cr0, Cr0Flags, Cr3, Cr4, Efer},
     structures::paging::{FrameAllocator, PageTable, PageTableFlags, PhysFrame, Size4KiB},
     PhysAddr, VirtAddr,
@@ -22,10 +20,10 @@ use x86_64::{
 
 use alloc::{borrow::ToOwned, format, vec, vec::Vec};
 use boot_lib::{
-    KernelArgs, KERNEL_ARGS_MEM_TYPE, KERNEL_STACK_BOTTOM, KERNEL_STACK_MEM_TYPE,
-    KERNEL_STACK_SIZE_PAGES, PHYS_MAP_OFFSET, PTE_MEM_TYPE,
+    KernelArgs, KERNEL_STACK_BOTTOM, KERNEL_STACK_MEM_TYPE, KERNEL_STACK_SIZE_PAGES,
+    PHYS_MAP_OFFSET, PTE_MEM_TYPE,
 };
-use core::{arch::asm, iter::FromIterator, ptr::addr_of_mut};
+use core::iter::FromIterator;
 use uefi::{
     proto::console::gop::{FrameBuffer, GraphicsOutput, ModeInfo, PixelFormat::Bgr},
     table::Runtime,
@@ -238,7 +236,7 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
 
     info!("Initializing framebuffer");
 
-    let (mut fb, fb_mode) = init_fb(&mut system_table);
+    let (fb, fb_mode) = init_fb(&mut system_table);
 
     info!("Loading memory map");
 
@@ -309,21 +307,21 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
 
     // Map the framebuffer
 
-    unsafe {
-        map_offset(
-            VirtAddr::new(fb.as_mut_ptr().add(PHYS_MAP_OFFSET as _) as _),
-            PhysAddr::new(fb.as_mut_ptr() as _),
-            align_up(4 * fb.size() as u64, Size4KiB::SIZE) / Size4KiB::SIZE,
-            &mut page_table,
-            &mut UefiAlloc {},
-            PageTableFlags::empty()
-                | PageTableFlags::GLOBAL
-                | PageTableFlags::WRITABLE
-                | PageTableFlags::PRESENT
-                | PageTableFlags::NO_EXECUTE,
-            PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
-        )
-    }
+    // unsafe {
+    //     map_offset(
+    //         VirtAddr::new(fb.as_mut_ptr().add(PHYS_MAP_OFFSET as _) as _),
+    //         PhysAddr::new(fb.as_mut_ptr() as _),
+    //         align_up(4 * fb.size() as u64, Size4KiB::SIZE) / Size4KiB::SIZE,
+    //         &mut page_table,
+    //         &mut UefiAlloc {},
+    //         PageTableFlags::empty()
+    //             | PageTableFlags::GLOBAL
+    //             | PageTableFlags::WRITABLE
+    //             | PageTableFlags::PRESENT
+    //             | PageTableFlags::NO_EXECUTE,
+    //         PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
+    //     )
+    // }
 
     info!("Setting virtual address map");
 
@@ -352,21 +350,6 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
 
     info!("Initializing kernel args struct");
 
-    let args = unsafe {
-        &mut *((system_table
-            .boot_services()
-            .allocate_pages(
-                AllocateType::AnyPages,
-                MemoryType::custom(KERNEL_ARGS_MEM_TYPE),
-                (align_up(size_of::<KernelArgs>() as u64, Size4KiB::SIZE) / Size4KiB::SIZE)
-                    as usize,
-            )
-            .expect("Could not allocate kernel args")
-            + PHYS_MAP_OFFSET) as usize as *mut MaybeUninit<KernelArgs>)
-    };
-
-    let args_ptr = args.as_mut_ptr();
-
     match page_table.translate(VirtAddr::new(kernel_main as usize as u64)) {
         TranslateResult::Mapped { flags, .. } => unsafe {
             if flags.contains(PageTableFlags::NO_EXECUTE) {
@@ -390,33 +373,13 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
                 )
                 .expect("Setting UEFI memory map failed");
 
-            addr_of_mut!((*args_ptr).uefi_rst).write(uefi_rst);
-            addr_of_mut!((*args_ptr).mmap).write(mmap);
-            addr_of_mut!((*args_ptr).fb_addr)
-                .write((fb.as_mut_ptr() as u64 + PHYS_MAP_OFFSET) as _);
-            addr_of_mut!((*args_ptr).fb_info).write(fb_mode);
-
-            let args_ptr = args.assume_init_mut();
-
-            execute_kernel(args_ptr, kernel_main);
+            kernel_main(KernelArgs {
+                fb,
+                fb_info: fb_mode,
+                mmap,
+                uefi_rst,
+            });
         },
         e => panic!("Kernel entry point inaccessible: {:?}", e),
     }
-}
-
-/// Switches the stack and calls the kernel entry point according
-/// to the Microsoft x64 calling convention
-fn execute_kernel(args_ptr: *mut KernelArgs, kernel_main: fn(*mut KernelArgs) -> !) -> ! {
-    unsafe {
-        asm!(
-            "mov rsp, r8",
-            "mov rbp, r8",
-            "jmp rdx",
-            in("r8") KERNEL_STACK_BOTTOM,
-            in("rcx") args_ptr,
-            in("rdx") kernel_main as *const u8,
-        );
-    }
-
-    unreachable!()
 }

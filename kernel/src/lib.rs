@@ -4,13 +4,17 @@
 extern crate alloc;
 
 use log::info;
+use spin::{Lazy, Mutex};
+use task::{executor::Executor, Task};
+
+pub static EXECUTOR: Lazy<Mutex<Executor>> = Lazy::new(|| Mutex::new(Executor::new()));
 
 pub mod device;
 pub mod interrupt;
 pub mod task;
 
 /// Initialize the kernel.
-pub fn init() {
+pub async fn init() {
     use spin::Once;
 
     static INIT: Once = Once::new();
@@ -26,12 +30,14 @@ pub fn init() {
     });
 }
 
-#[allow(clippy::not_unsafe_ptr_arg_deref)] // we know that the pointer lasts for 'static
-pub fn kernel_main(args: *mut boot_lib::KernelArgs) -> ! {
-    let _args = unsafe { &mut *args };
+pub fn kernel_main(mut args: boot_lib::KernelArgs<'static>) -> ! {
+    for i in 0..args.fb.size() {
+        unsafe {
+            args.fb.write_byte(i, 0x00);
+        }
+    }
 
-    init();
+    EXECUTOR.lock().spawn(Task::new(init()));
 
-    #[allow(clippy::empty_loop)]
-    loop {}
+    EXECUTOR.lock().run();
 }

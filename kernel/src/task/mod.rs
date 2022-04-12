@@ -10,12 +10,12 @@ use core::{
 pub mod executor;
 
 /// A task that can be executed with an [`Executor`](executor::Executor).
-pub struct Task {
+pub struct Task<'a> {
     pub id: TaskId,
-    future: Pin<Box<dyn Future<Output = ()>>>,
+    future: Pin<Box<dyn Future<Output = ()> + 'a + Send + Sync>>,
 }
 
-impl Debug for Task {
+impl Debug for Task<'_> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Task")
             .field("id", &self.id)
@@ -24,8 +24,8 @@ impl Debug for Task {
     }
 }
 
-impl Task {
-    pub fn new(future: impl Future<Output = ()> + 'static) -> Self {
+impl<'a> Task<'a> {
+    pub fn new(future: impl Future<Output = ()> + 'a + Send + Sync) -> Self {
         Self {
             id: TaskId::new(),
             future: Box::pin(future),
@@ -33,7 +33,7 @@ impl Task {
     }
 }
 
-impl Future for Task {
+impl Future for Task<'_> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {

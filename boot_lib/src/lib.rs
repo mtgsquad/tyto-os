@@ -4,7 +4,7 @@
 use arrayvec::ArrayVec;
 use core::fmt::{Debug, Formatter};
 use uefi::{
-    proto::console::gop::ModeInfo,
+    proto::console::gop::{FrameBuffer, ModeInfo},
     table::{boot::MemoryDescriptor, Runtime, SystemTable},
 };
 
@@ -25,14 +25,14 @@ pub const KERNEL_STACK_SIZE_PAGES: u64 = 256;
 pub const KERNEL_STACK_BOTTOM: u64 = 0xFFFFFFF000000000 - 0x1000;
 
 #[repr(C)]
-pub struct KernelArgs {
+pub struct KernelArgs<'a> {
     pub mmap: ArrayVec<MemoryDescriptor, 512>,
     pub uefi_rst: SystemTable<Runtime>,
-    pub fb_addr: *mut u8,
+    pub fb: FrameBuffer<'a>,
     pub fb_info: ModeInfo,
 }
 
-impl Debug for KernelArgs {
+impl Debug for KernelArgs<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         f.write_str("KernelArgs with MDL: ")?;
 

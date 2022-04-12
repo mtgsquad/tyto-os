@@ -9,13 +9,14 @@ use crossbeam_queue::ArrayQueue;
 
 use super::{Task, TaskId};
 
-pub struct Executor {
-    tasks: BTreeMap<TaskId, Task>,
+pub struct Executor<'a> {
+    tasks: BTreeMap<TaskId, Task<'a>>,
     task_queue: Arc<ArrayQueue<TaskId>>,
     waker_cache: BTreeMap<TaskId, Waker>,
 }
 
-impl Executor {
+impl<'a> Executor<'a> {
+    /// Create a new executor
     pub fn new() -> Self {
         Executor {
             tasks: BTreeMap::new(),
@@ -24,7 +25,7 @@ impl Executor {
         }
     }
 
-    pub fn spawn(&mut self, task: Task) {
+    pub fn spawn(&mut self, task: Task<'a>) {
         let task_id = task.id;
         if self.tasks.insert(task.id, task).is_some() {
             panic!("task with same ID already in tasks");
@@ -76,7 +77,7 @@ impl Executor {
     }
 }
 
-impl Default for Executor {
+impl Default for Executor<'_> {
     fn default() -> Self {
         Self::new()
     }
