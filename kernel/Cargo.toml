@@ -1,0 +1,22 @@
+[package]
+name = "kernel"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+uefi = "0.15"
+uefi-services = "0.12"
+crossbeam-queue = { version = "0.3", features = [
+    "alloc",
+    "nightly",
+], default-features = false }
+pc-keyboard = "0.5"
+futures-util = { version = "0.3", features = [
+    "alloc",
+], default-features = false }
+log = "0.4"
+x86_64 = "0.14"
+ps2 = "0.2"
+boot_lib = { path = "../boot_lib" }

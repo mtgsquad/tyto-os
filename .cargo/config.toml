@@ -2,5 +2,5 @@
 runner = "cargo run --bin boot --package boot --"
 
 [alias]
-kbuild = "build --package tyto --target x86_64-unknown-uefi -Zbuild-std=core,compiler_builtins,alloc -Zbuild-std-features=compiler-builtins-mem --release"
-krun = "run --bin tyto --target x86_64-unknown-uefi -Zbuild-std=core,compiler_builtins,alloc -Zbuild-std-features=compiler-builtins-mem --release"
+kbuild = "build --package bootloader --target x86_64-unknown-uefi -Zbuild-std=core,compiler_builtins,alloc -Zbuild-std-features=compiler-builtins-mem --release"
+krun = "run --bin bootloader --target x86_64-unknown-uefi -Zbuild-std=core,compiler_builtins,alloc -Zbuild-std-features=compiler-builtins-mem --release"
