@@ -1,5 +1,5 @@
 [target.'cfg(target_os = "uefi")']
-runner = "cargo run --bin boot --package boot --"
+runner = "cargo run --bin qemu --"
 
 [alias]
 kbuild = "build --package bootloader --target x86_64-unknown-uefi -Zbuild-std=core,compiler_builtins,alloc -Zbuild-std-features=compiler-builtins-mem --release"

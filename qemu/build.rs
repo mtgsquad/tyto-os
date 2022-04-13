@@ -1,26 +1,26 @@
-use std::{env, error::Error, fs, io::Read, path::Path};
+use std::{env, error::Error, fs, io::Read, path::Path, result::Result as StdResult};
 
-const OVMF_DOWNLOAD_ROOT: &str =
-    "https://github.com/rust-osdev/ovmf-prebuilt/releases/latest/download";
+const OVMF_DOWNLOAD_URL: &str =
+    "https://github.com/rust-osdev/ovmf-prebuilt/releases/latest/download/OVMF-pure-efi.fd";
 
-fn main() -> Result<(), Box<dyn Error>> {
+type Result = StdResult<(), Box<dyn Error>>;
+
+fn main() -> Result {
     let out_dir = env::var("OUT_DIR")?;
 
-    download_file("OVMF_CODE-pure-efi.fd", &out_dir)?;
-
-    download_file("OVMF_VARS-pure-efi.fd", &out_dir)?;
+    download_bios(&out_dir)?;
 
     Ok(())
 }
 
-fn download_file(name: &str, out_dir: impl AsRef<Path>) -> Result<(), Box<dyn Error>> {
+fn download_bios(out_dir: impl AsRef<Path>) -> Result {
     let mut bytes = Vec::new();
-    ureq::get(&format!("{OVMF_DOWNLOAD_ROOT}/{name}"))
+    ureq::get(OVMF_DOWNLOAD_URL)
         .call()?
         .into_reader()
         .read_to_end(&mut bytes)?;
 
-    fs::write(out_dir.as_ref().join(name.replace("-pure-efi", "")), bytes)?;
+    fs::write(out_dir.as_ref().join("OVMF.fd"), bytes)?;
 
     Ok(())
 }

@@ -19,14 +19,8 @@ fn main() {
     let mut qemu = Command::new("qemu-system-x86_64");
     qemu.arg("-drive")
         .arg(format!("format=raw,file=fat:rw:file={}", esp_dir.display()));
-    qemu.arg("-drive").arg(format!(
-        "if=pflash,format=raw,readonly=on,file={}",
-        out_dir.join("OVMF_CODE.fd").display()
-    ));
-    qemu.arg("-drive").arg(format!(
-        "if=pflash,format=raw,readonly=on,file={}",
-        out_dir.join("OVMF_VARS.fd").display()
-    ));
+    qemu.arg("-bios")
+        .arg(out_dir.join("OVMF.fd").to_str().unwrap());
     qemu.arg("-machine").arg("q35");
     qemu.arg("-serial").arg("stdio");
     qemu.arg("-net").arg("none");
