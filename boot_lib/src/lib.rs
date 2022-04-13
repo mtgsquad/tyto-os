@@ -8,8 +8,6 @@ use uefi::{
     table::{boot::MemoryDescriptor, Runtime, SystemTable},
 };
 
-pub type KernelEntryPoint = extern "efiapi" fn(*mut KernelArgs) -> !;
-
 pub const KERNEL_ARGS_MDL_SIZE: u64 = 512;
 
 pub const KERNEL_MEM_TYPE_RANGE_START: u32 = 0x80000000;
@@ -31,6 +29,9 @@ pub struct KernelArgs<'a> {
     pub fb: FrameBuffer<'a>,
     pub fb_info: ModeInfo,
 }
+
+unsafe impl Send for KernelArgs<'_> {}
+unsafe impl Sync for KernelArgs<'_> {}
 
 impl Debug for KernelArgs<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {

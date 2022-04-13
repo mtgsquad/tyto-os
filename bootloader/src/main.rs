@@ -1,3 +1,5 @@
+// Most of this code is taken from the phobos project.
+
 #![no_std]
 #![no_main]
 #![feature(abi_efiapi)]
@@ -35,7 +37,7 @@ use x86_64::structures::paging::{
 
 use kernel::kernel_main;
 
-struct UefiAlloc();
+struct UefiAlloc;
 
 unsafe impl FrameAllocator<Size4KiB> for UefiAlloc {
     fn allocate_frame(&mut self) -> Option<PhysFrame<Size4KiB>> {
@@ -194,23 +196,23 @@ fn init_fb(system_table: &mut SystemTable<Boot>) -> (FrameBuffer<'static>, ModeI
             .unwrap()
     };
 
-    let mut selected_mode = None;
-    'out: for i in [(1920, 1080), (1920, 1200), (1280, 720), (640, 480)] {
-        for mode in gop.modes().collect::<Vec<_>>() {
-            let info = mode.info();
-            if info.resolution() == i && info.pixel_format() == Bgr {
-                match gop.set_mode(&mode) {
-                    Ok(_) => {
-                        selected_mode = Some(mode);
-                        break 'out;
+    let mode = [(1920, 1080), (1920, 1200), (1280, 720), (640, 480)]
+        .into_iter()
+        .find_map(|i| {
+            for mode in gop.modes().collect::<Vec<_>>() {
+                let info = mode.info();
+                if info.resolution() == i && info.pixel_format() == Bgr {
+                    match gop.set_mode(&mode) {
+                        Ok(_) => return Some(*mode.info()),
+                        Err(_) => return None,
                     }
-                    Err(_) => continue 'out,
                 }
             }
-        }
-    }
+            None
+        })
+        .expect("Failed to find a suitable framebuffer mode");
 
-    (gop.frame_buffer(), *selected_mode.unwrap().info())
+    (gop.frame_buffer(), mode)
 }
 
 #[entry]
@@ -222,10 +224,7 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
         .reset(false)
         .expect("Failed to reset stdout");
 
-    info!(
-        "phobos x86_64 UEFI bootloader v{}",
-        env!("CARGO_PKG_VERSION")
-    );
+    info!("Tyto x86_64 UEFI bootloader v{}", env!("CARGO_PKG_VERSION"));
     let rev = system_table.uefi_revision();
     info!("UEFI v{}.{}", rev.major(), rev.minor());
     info!("CR0 -> {:?}", Cr0::read());
@@ -304,24 +303,6 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
             VirtAddr::new(PHYS_MAP_OFFSET as _),
         )
     };
-
-    // Map the framebuffer
-
-    // unsafe {
-    //     map_offset(
-    //         VirtAddr::new(fb.as_mut_ptr().add(PHYS_MAP_OFFSET as _) as _),
-    //         PhysAddr::new(fb.as_mut_ptr() as _),
-    //         align_up(4 * fb.size() as u64, Size4KiB::SIZE) / Size4KiB::SIZE,
-    //         &mut page_table,
-    //         &mut UefiAlloc {},
-    //         PageTableFlags::empty()
-    //             | PageTableFlags::GLOBAL
-    //             | PageTableFlags::WRITABLE
-    //             | PageTableFlags::PRESENT
-    //             | PageTableFlags::NO_EXECUTE,
-    //         PageTableFlags::PRESENT | PageTableFlags::WRITABLE,
-    //     )
-    // }
 
     info!("Setting virtual address map");
 

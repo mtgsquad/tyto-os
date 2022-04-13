@@ -3,12 +3,8 @@ use core::{
     task::{Context, Poll},
 };
 use crossbeam_queue::ArrayQueue;
-use futures_util::{
-    stream::{Stream, StreamExt},
-    task::AtomicWaker,
-};
-use log::{info, warn};
-use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
+use futures_util::{stream::Stream, task::AtomicWaker};
+use log::warn;
 use spin::{Lazy, Mutex};
 
 static SCANCODE_QUEUE: Lazy<Mutex<ArrayQueue<u8>>> = Lazy::new(|| Mutex::new(ArrayQueue::new(100)));
@@ -50,19 +46,28 @@ impl Stream for ScancodeStream {
     }
 }
 
-/// Prints every keypress given through a PS/2 keyboard.
-///
-/// If a character is invalid unicode, the raw bytes are printed instead.
-pub async fn print_keypresses() {
-    let mut keyboard = Keyboard::new(layouts::Us104Key, ScancodeSet1, HandleControl::Ignore);
+pub mod print_keypresses {
+    use core::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
+    use futures_util::StreamExt;
+    use log::info;
+    use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
 
-    while let Some(scancode) = ScancodeStream.next().await {
-        if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
-            if let Some(key) = keyboard.process_keyevent(key_event) {
-                match key {
-                    DecodedKey::Unicode(character) => info!("{}", character),
-                    DecodedKey::RawKey(key) => info!("{:?}", key),
-                }
+    static KEYPRESSES: AtomicUsize = AtomicUsize::new(0);
+
+    /// Prints every keypress given through a PS/2 keyboard.
+    ///
+    /// If a character is invalid unicode, the raw bytes are printed instead.
+    pub async fn print_keypresses() {
+        let mut keyboard = Keyboard::new(layouts::Us104Key, ScancodeSet1, HandleControl::Ignore);
+
+        while super::ScancodeStream.next().await.is_some() {
+            unsafe {
+                crate::KERNEL_ARGS
+                    .as_mut_ptr()
+                    .as_mut()
+                    .unwrap()
+                    .fb
+                    .write_byte(KEYPRESSES.fetch_add(1, Ordering::Acquire), 0xFF);
             }
         }
     }
