@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 uefi = "0.15"
-uefi-services = "0.12"
 crossbeam-queue = { version = "0.3", features = [
     "alloc",
     "nightly",
@@ -21,3 +20,8 @@ x86_64 = "0.14"
 ps2 = "0.2"
 boot_lib = { path = "../boot_lib" }
 spin = "0.9"
+embedded-graphics = "0.7"
+embedded-graphics-core = "0.3"
+noto-sans-mono-bitmap = "0.1"
+uart_16550 = "0.2"
+pic8259 = "0.10"

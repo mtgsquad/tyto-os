@@ -185,7 +185,7 @@ unsafe fn map_stack<M>(
     }
 }
 
-fn init_fb(system_table: &mut SystemTable<Boot>) -> (FrameBuffer<'static>, ModeInfo) {
+fn init_framebuffer(system_table: &mut SystemTable<Boot>) -> (FrameBuffer<'static>, ModeInfo) {
     let gop = unsafe {
         system_table
             .boot_services()
@@ -235,7 +235,7 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
 
     info!("Initializing framebuffer");
 
-    let (fb, fb_mode) = init_fb(&mut system_table);
+    let (framebuffer, framebuffer_mode) = init_framebuffer(&mut system_table);
 
     info!("Loading memory map");
 
@@ -355,8 +355,8 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
                 .expect("Setting UEFI memory map failed");
 
             kernel_main(KernelArgs {
-                fb,
-                fb_info: fb_mode,
+                framebuffer,
+                framebuffer_info: framebuffer_mode,
                 mmap,
                 uefi_rst,
             });

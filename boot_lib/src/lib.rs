@@ -26,8 +26,8 @@ pub const KERNEL_STACK_BOTTOM: u64 = 0xFFFFFFF000000000 - 0x1000;
 pub struct KernelArgs<'a> {
     pub mmap: ArrayVec<MemoryDescriptor, 512>,
     pub uefi_rst: SystemTable<Runtime>,
-    pub fb: FrameBuffer<'a>,
-    pub fb_info: ModeInfo,
+    pub framebuffer: FrameBuffer<'a>,
+    pub framebuffer_info: ModeInfo,
 }
 
 unsafe impl Send for KernelArgs<'_> {}

@@ -1,23 +1,29 @@
 #![no_std]
 #![feature(abi_x86_interrupt)]
+#![feature(const_mut_refs)]
 
 extern crate alloc;
 
+use core::ptr::NonNull;
+
 use boot_lib::KernelArgs;
+use data::{IRQLock, LateInit};
 use log::info;
 use spin::{Lazy, Mutex, Once};
-use task::{executor::Executor, Task};
-use uefi::proto::console::gop::FrameBuffer;
+use task::executor::Executor;
 
 pub static EXECUTOR: Lazy<Mutex<Executor>> = Lazy::new(|| Mutex::new(Executor::new()));
-pub static KERNEL_ARGS: Once<KernelArgs> = Once::new();
+pub static KERNEL_ARGS: LateInit<IRQLock<KernelArgs>> = LateInit::new();
 
+pub mod data;
 pub mod device;
+pub mod diag;
+pub mod graphics;
 pub mod interrupt;
 pub mod task;
 
 /// Initialize the kernel.
-pub async fn init() {
+pub fn init() {
     static INIT: Once = Once::new();
 
     INIT.call_once(|| {
@@ -25,30 +31,34 @@ pub async fn init() {
 
         device::init();
         task::init();
-        interrupt::init();
-
-        EXECUTOR.lock().spawn(Task::new(
-            device::ps2::keyboard::print_keypresses::print_keypresses(),
-        ));
 
         info!("Kernel initialized.");
     });
 }
 
-pub fn clear_screen(framebuffer: &mut FrameBuffer) {
-    for i in 0..framebuffer.size() {
-        unsafe { framebuffer.write_byte(i, 0x00) }
+pub fn kernel_main(args: KernelArgs<'static>) -> ! {
+    KERNEL_ARGS.init(|| IRQLock::new(args));
+
+    diag::init();
+
+    info!("Tyto kernel v{} on x86_64", env!("CARGO_PKG_VERSION"));
+
+    info!("Initializing arch specific structures");
+
+    interrupt::init();
+
+    info!("Initializing framebuffer");
+
+    {
+        let mut args = KERNEL_ARGS.lock();
+
+        diag::reinit_with_framebuffer(
+            NonNull::new(args.framebuffer.as_mut_ptr()).unwrap(),
+            args.framebuffer_info,
+        );
     }
-}
 
-pub fn kernel_main(mut args: KernelArgs<'static>) -> ! {
-    clear_screen(&mut args.fb);
+    init();
 
-    KERNEL_ARGS.call_once(|| args);
-
-    let mut executor = EXECUTOR.lock();
-
-    executor.spawn(Task::new(init()));
-
-    executor.run();
+    EXECUTOR.lock().run();
 }
