@@ -60,6 +60,4 @@ impl Default for TaskId {
     }
 }
 
-pub(crate) fn init() {
-    // we don't need to do anything here...
-}
+pub(crate) fn init() {}

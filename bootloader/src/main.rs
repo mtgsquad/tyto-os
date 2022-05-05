@@ -15,6 +15,7 @@ use uefi::{
 };
 
 use x86_64::{
+    align_up,
     registers::control::{Cr0, Cr0Flags, Cr3, Cr4, Efer},
     structures::paging::{FrameAllocator, PageTable, PageTableFlags, PhysFrame, Size4KiB},
     PhysAddr, VirtAddr,
@@ -22,14 +23,16 @@ use x86_64::{
 
 use alloc::{borrow::ToOwned, format, vec, vec::Vec};
 use boot_lib::{
-    KernelArgs, KERNEL_STACK_BOTTOM, KERNEL_STACK_MEM_TYPE, KERNEL_STACK_SIZE_PAGES,
-    PHYS_MAP_OFFSET, PTE_MEM_TYPE,
+    InternalKernelArgs, KernelArgs, KERNEL_ARGS_MEM_TYPE, KERNEL_STACK_BOTTOM,
+    KERNEL_STACK_MEM_TYPE, KERNEL_STACK_SIZE_PAGES, PHYS_MAP_OFFSET, PTE_MEM_TYPE,
 };
-use core::iter::FromIterator;
-use uefi::{
-    proto::console::gop::{FrameBuffer, GraphicsOutput, ModeInfo, PixelFormat::Bgr},
-    table::Runtime,
+use core::{
+    arch::asm,
+    iter::FromIterator,
+    mem::{size_of, MaybeUninit},
+    ptr::{addr_of, addr_of_mut},
 };
+use uefi::proto::console::gop::{FrameBuffer, GraphicsOutput, ModeInfo, PixelFormat::Bgr};
 use x86_64::structures::paging::{
     mapper::{MapToError, TranslateResult},
     Mapper, OffsetPageTable, Page, PageSize, Size1GiB, Size2MiB, Translate,
@@ -235,7 +238,7 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
 
     info!("Initializing framebuffer");
 
-    let (framebuffer, framebuffer_mode) = init_framebuffer(&mut system_table);
+    let (mut framebuffer, framebuffer_mode) = init_framebuffer(&mut system_table);
 
     info!("Loading memory map");
 
@@ -331,6 +334,21 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
 
     info!("Initializing kernel args struct");
 
+    let args = unsafe {
+        &mut *((system_table
+            .boot_services()
+            .allocate_pages(
+                AllocateType::AnyPages,
+                MemoryType::custom(KERNEL_ARGS_MEM_TYPE),
+                (align_up(size_of::<KernelArgs>() as u64, Size4KiB::SIZE) / Size4KiB::SIZE)
+                    as usize,
+            )
+            .expect("Could not allocate kernel args")
+            + PHYS_MAP_OFFSET) as usize as *mut MaybeUninit<InternalKernelArgs>)
+    };
+
+    let args_ptr = args.as_mut_ptr();
+
     match page_table.translate(VirtAddr::new(kernel_main as usize as u64)) {
         TranslateResult::Mapped { flags, .. } => unsafe {
             if flags.contains(PageTableFlags::NO_EXECUTE) {
@@ -346,21 +364,59 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
             mmap.iter_mut()
                 .for_each(|x| x.virt_start = x.phys_start + PHYS_MAP_OFFSET);
 
-            uefi_rst = ((&mut uefi_rst) as *mut SystemTable<Runtime>)
-                .read()
+            let current_system_table_addr = uefi_rst.get_current_system_table_addr();
+
+            uefi_rst = uefi_rst
                 .set_virtual_address_map(
                     mmap.as_mut_slice(),
-                    uefi_rst.get_current_system_table_addr() + PHYS_MAP_OFFSET,
+                    current_system_table_addr + PHYS_MAP_OFFSET,
                 )
                 .expect("Setting UEFI memory map failed");
 
-            kernel_main(KernelArgs {
-                framebuffer,
-                framebuffer_info: framebuffer_mode,
-                mmap,
-                uefi_rst,
-            });
+            addr_of_mut!((*args_ptr).uefi_rst).write(uefi_rst);
+            addr_of_mut!((*args_ptr).mmap).write(mmap);
+            addr_of_mut!((*args_ptr).framebuffer_addr)
+                .write((framebuffer.as_mut_ptr() as u64 + PHYS_MAP_OFFSET) as _);
+            addr_of_mut!((*args_ptr).framebuffer_info).write(framebuffer_mode);
+
+            let args_ptr = args.assume_init_mut() as *mut InternalKernelArgs;
+
+            execute_kernel(kernel_main, args_ptr);
         },
         e => panic!("Kernel entry point inaccessible: {:?}", e),
     }
+}
+
+fn execute_kernel(
+    // to ensure that the types are correct.
+    _kernel_main: fn(KernelArgs<'static>) -> !,
+    kernel_args: *mut InternalKernelArgs,
+) -> ! {
+    // Switch the stack and call the entry point according to Microsoft x64
+    // calling convention
+
+    unsafe {
+        asm!(
+            "mov rsp, r8",
+            "mov rbp, r8",
+            "jmp rdx",
+            in("r8") KERNEL_STACK_BOTTOM,
+            in("rcx") kernel_args,
+            in("rdx") kernel_wrapper as *const u8,
+        )
+    };
+
+    unreachable!()
+}
+
+fn kernel_wrapper(kernel_args: *mut InternalKernelArgs) -> ! {
+    kernel_main(unsafe {
+        KernelArgs {
+            uefi_rst: addr_of!((*kernel_args).uefi_rst).read(),
+            mmap: addr_of!((*kernel_args).mmap).read(),
+            framebuffer: (addr_of!((*kernel_args).framebuffer_addr).read() as *mut FrameBuffer)
+                .read(),
+            framebuffer_info: addr_of!((*kernel_args).framebuffer_info).read(),
+        }
+    });
 }

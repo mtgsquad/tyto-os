@@ -60,5 +60,14 @@ pub fn kernel_main(args: KernelArgs<'static>) -> ! {
 
     init();
 
+    {
+        let mut args = KERNEL_ARGS.lock();
+        for thing in 0..args.framebuffer.size() {
+            unsafe {
+                args.framebuffer.write_byte(thing, 0xFF);
+            }
+        }
+    }
+
     EXECUTOR.lock().run();
 }
