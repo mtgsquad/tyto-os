@@ -7,21 +7,21 @@ use x86_64::instructions::interrupts;
 
 // We don't need a real spinlock since the kernel does not support SMP yet
 
-pub struct IRQLock<T> {
+pub(crate) struct IRQLock<T> {
     // inner: Mutex<T>,
     locked: AtomicBool,
     val: UnsafeCell<T>,
 }
 
 impl<T> IRQLock<T> {
-    pub const fn new(val: T) -> IRQLock<T> {
+    pub(crate) const fn new(val: T) -> IRQLock<T> {
         IRQLock {
             // inner: Mutex::new(val),
             locked: AtomicBool::new(false),
             val: UnsafeCell::new(val),
         }
     }
-    pub fn lock(&self) -> InterruptGuard<T> {
+    pub(crate) fn lock(&self) -> InterruptGuard<T> {
         // let guard = self.inner.lock();
         if self
             .locked
@@ -35,7 +35,7 @@ impl<T> IRQLock<T> {
         InterruptGuard::new(unsafe { &mut *self.val.get() }, flag, &self.locked)
     }
 
-    pub fn is_locked(&self) -> bool {
+    pub(crate) fn is_locked(&self) -> bool {
         self.locked.load(Ordering::SeqCst)
     }
 }
@@ -43,7 +43,7 @@ impl<T> IRQLock<T> {
 unsafe impl<T> Sync for IRQLock<T> {}
 unsafe impl<T> Send for IRQLock<T> {}
 
-pub struct InterruptGuard<'a, T> {
+pub(crate) struct InterruptGuard<'a, T> {
     // inner: MutexGuard<'a, T>,
     val: &'a mut T,
     locked: &'a AtomicBool,

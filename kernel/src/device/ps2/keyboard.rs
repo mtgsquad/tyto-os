@@ -23,7 +23,7 @@ pub(crate) fn add_scancode(scancode: u8) {
 
 /// A stream of scancodes.
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct ScancodeStream;
+pub(crate) struct ScancodeStream;
 
 impl Stream for ScancodeStream {
     type Item = u8;

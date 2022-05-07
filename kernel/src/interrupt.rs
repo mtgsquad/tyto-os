@@ -21,24 +21,24 @@ use x86_64::{
 
 use crate::data::IRQLock;
 
-pub const PIC_OFFSET: u8 = 32;
+pub(crate) const PIC_OFFSET: u8 = 32;
 
 #[derive(Debug, Copy, Clone)]
 #[repr(u8)]
-pub enum IntIdx {
+pub(crate) enum IntIdx {
     Timer = PIC_OFFSET,
     Keyboard,
 }
 
 impl IntIdx {
-    pub fn as_u8(self) -> u8 {
+    pub(crate) fn as_u8(self) -> u8 {
         self as u8
     }
 }
 
 static TIMER_VAL: AtomicU64 = AtomicU64::new(0);
 
-pub static DOUBLE_FAULT_STACK: [u8; Size2MiB::SIZE as usize] = [0; Size2MiB::SIZE as usize];
+pub(crate) static DOUBLE_FAULT_STACK: [u8; Size2MiB::SIZE as usize] = [0; Size2MiB::SIZE as usize];
 
 static TSS: Lazy<IRQLock<TaskStateSegment>> = Lazy::new(|| {
     let mut tss = TaskStateSegment::new();
@@ -76,7 +76,7 @@ static IDT: Lazy<InterruptDescriptorTable> = Lazy::new(|| {
     idt
 });
 
-pub static PICS: IRQLock<ChainedPics> =
+pub(crate) static PICS: IRQLock<ChainedPics> =
     IRQLock::new(unsafe { ChainedPics::new(PIC_OFFSET, PIC_OFFSET + 8) });
 
 /// Loads the GDT and fixes the segments
@@ -100,7 +100,7 @@ fn load_gdt() {
 const PIC_TERM_COUNT: u16 = 5966; // Should fire roughly each 5 ms
 
 /// Initialize GDT, IDT and PIC
-pub fn init() {
+pub(crate) fn init() {
     load_gdt();
     IDT.load();
     unsafe {

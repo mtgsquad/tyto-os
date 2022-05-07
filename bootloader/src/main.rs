@@ -23,14 +23,14 @@ use x86_64::{
 
 use alloc::{borrow::ToOwned, format, vec, vec::Vec};
 use boot_lib::{
-    InternalKernelArgs, KernelArgs, KERNEL_ARGS_MEM_TYPE, KERNEL_STACK_BOTTOM,
-    KERNEL_STACK_MEM_TYPE, KERNEL_STACK_SIZE_PAGES, PHYS_MAP_OFFSET, PTE_MEM_TYPE,
+    KernelArgs, KERNEL_ARGS_MEM_TYPE, KERNEL_STACK_BOTTOM, KERNEL_STACK_MEM_TYPE,
+    KERNEL_STACK_SIZE_PAGES, PHYS_MAP_OFFSET, PTE_MEM_TYPE,
 };
 use core::{
     arch::asm,
     iter::FromIterator,
     mem::{size_of, MaybeUninit},
-    ptr::{addr_of, addr_of_mut},
+    ptr::addr_of_mut,
 };
 use uefi::proto::console::gop::{FrameBuffer, GraphicsOutput, ModeInfo, PixelFormat::Bgr};
 use x86_64::structures::paging::{
@@ -344,7 +344,7 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
                     as usize,
             )
             .expect("Could not allocate kernel args")
-            + PHYS_MAP_OFFSET) as usize as *mut MaybeUninit<InternalKernelArgs>)
+            + PHYS_MAP_OFFSET) as usize as *mut MaybeUninit<KernelArgs>)
     };
 
     let args_ptr = args.as_mut_ptr();
@@ -379,7 +379,7 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
                 .write((framebuffer.as_mut_ptr() as u64 + PHYS_MAP_OFFSET) as _);
             addr_of_mut!((*args_ptr).framebuffer_info).write(framebuffer_mode);
 
-            let args_ptr = args.assume_init_mut() as *mut InternalKernelArgs;
+            let args_ptr = args.assume_init_mut() as *mut KernelArgs;
 
             execute_kernel(kernel_main, args_ptr);
         },
@@ -389,8 +389,8 @@ fn efi_main(handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
 
 fn execute_kernel(
     // to ensure that the types are correct.
-    _kernel_main: fn(KernelArgs<'static>) -> !,
-    kernel_args: *mut InternalKernelArgs,
+    _kernel_main: fn(KernelArgs) -> !,
+    kernel_args: *mut KernelArgs,
 ) -> ! {
     // Switch the stack and call the entry point according to Microsoft x64
     // calling convention
@@ -409,14 +409,7 @@ fn execute_kernel(
     unreachable!()
 }
 
-fn kernel_wrapper(kernel_args: *mut InternalKernelArgs) -> ! {
-    kernel_main(unsafe {
-        KernelArgs {
-            uefi_rst: addr_of!((*kernel_args).uefi_rst).read(),
-            mmap: addr_of!((*kernel_args).mmap).read(),
-            framebuffer: (addr_of!((*kernel_args).framebuffer_addr).read() as *mut FrameBuffer)
-                .read(),
-            framebuffer_info: addr_of!((*kernel_args).framebuffer_info).read(),
-        }
-    });
+// called by assembly
+fn kernel_wrapper(kernel_args: *mut KernelArgs) -> ! {
+    kernel_main(unsafe { kernel_args.read() });
 }

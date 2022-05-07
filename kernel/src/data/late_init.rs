@@ -2,18 +2,18 @@ use core::ops::{Deref, DerefMut};
 
 use spin::Once;
 
-pub struct LateInit<T>(Once<T>);
+pub(crate) struct LateInit<T>(Once<T>);
 
 impl<T> LateInit<T> {
-    pub const fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self(Once::new())
     }
 
-    pub fn init(&self, init: impl FnOnce() -> T) {
+    pub(crate) fn init(&self, init: impl FnOnce() -> T) {
         self.0.call_once(init);
     }
 
-    pub fn into_inner(self) -> Once<T> {
+    pub(crate) fn into_inner(self) -> Once<T> {
         self.0
     }
 }

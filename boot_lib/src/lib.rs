@@ -2,9 +2,9 @@
 #![feature(abi_efiapi)]
 
 use arrayvec::ArrayVec;
-use core::fmt::{Debug, Formatter};
+use core::fmt;
 use uefi::{
-    proto::console::gop::{FrameBuffer, ModeInfo},
+    proto::console::gop::ModeInfo,
     table::{boot::MemoryDescriptor, Runtime, SystemTable},
 };
 
@@ -22,18 +22,16 @@ pub const PHYS_MAP_OFFSET: u64 = 0xFFFFFFF000000000;
 pub const KERNEL_STACK_SIZE_PAGES: u64 = 256;
 pub const KERNEL_STACK_BOTTOM: u64 = 0xFFFFFFF000000000 - 0x1000;
 
-pub struct KernelArgs<'a> {
+#[repr(C)]
+pub struct KernelArgs {
     pub mmap: ArrayVec<MemoryDescriptor, 512>,
     pub uefi_rst: SystemTable<Runtime>,
-    pub framebuffer: FrameBuffer<'a>,
+    pub framebuffer_addr: *mut u8,
     pub framebuffer_info: ModeInfo,
 }
 
-unsafe impl Send for KernelArgs<'_> {}
-unsafe impl Sync for KernelArgs<'_> {}
-
-impl Debug for KernelArgs<'_> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+impl fmt::Debug for KernelArgs {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("KernelArgs with MDL: ")?;
 
         for i in self.mmap.iter() {
@@ -42,12 +40,4 @@ impl Debug for KernelArgs<'_> {
 
         Result::Ok(())
     }
-}
-
-#[repr(C)]
-pub struct InternalKernelArgs {
-    pub mmap: ArrayVec<MemoryDescriptor, 512>,
-    pub uefi_rst: SystemTable<Runtime>,
-    pub framebuffer_addr: *mut u8,
-    pub framebuffer_info: ModeInfo,
 }

@@ -2,16 +2,16 @@ use core::ops::Deref;
 use spin::Mutex;
 
 mod late_init;
-pub use late_init::LateInit;
+pub(crate) use late_init::LateInit;
 
 mod irq_lock;
-pub use irq_lock::{IRQLock, InterruptGuard};
+pub(crate) use irq_lock::IRQLock;
 
 /// A hacky workaround to be able to implement traits for `Mutex<T>`
-pub struct CrateMutex<T>(pub Mutex<T>);
+pub(crate) struct CrateMutex<T>(pub(crate) Mutex<T>);
 
 impl<T> CrateMutex<T> {
-    pub const fn new(t: T) -> Self {
+    pub(crate) const fn new(t: T) -> Self {
         Self(Mutex::new(t))
     }
 }

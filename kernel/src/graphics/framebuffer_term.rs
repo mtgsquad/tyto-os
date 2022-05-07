@@ -12,7 +12,7 @@ const TAB_SIZE: i64 = 4;
 const PADDING_PX: i64 = 3;
 const FONT_SIZE: BitmapHeight = BitmapHeight::Size20;
 
-pub struct FramebufferTextRender {
+pub(crate) struct FramebufferTextRender {
     font_size: i64,
     current_pos: (i64, i64),
     bg: Rgb888,
@@ -21,7 +21,7 @@ pub struct FramebufferTextRender {
 // TODO Support ANSI control codes
 
 impl FramebufferTextRender {
-    pub fn new(bg: Rgb888) -> Self {
+    pub(crate) fn new(bg: Rgb888) -> Self {
         let mut framebuffer = GLOBAL_FRAMEBUFFER.lock();
         framebuffer.fill(bg);
         framebuffer.flush();
@@ -32,12 +32,16 @@ impl FramebufferTextRender {
         }
     }
 
-    pub fn write_fmt_colored(&mut self, args: Arguments<'_>, color: Rgb888) -> core::fmt::Result {
+    pub(crate) fn write_fmt_colored(
+        &mut self,
+        args: Arguments<'_>,
+        color: Rgb888,
+    ) -> core::fmt::Result {
         let str = args.to_string();
         self.write_str_colored(&str, color)
     }
 
-    pub fn write_str_colored(&mut self, string: &str, color: Rgb888) -> core::fmt::Result {
+    pub(crate) fn write_str_colored(&mut self, string: &str, color: Rgb888) -> core::fmt::Result {
         for ch in string.chars() {
             self.write_char_colored_impl(ch, color)?
         }
@@ -47,7 +51,7 @@ impl FramebufferTextRender {
         Ok(())
     }
 
-    pub fn write_char_colored(&mut self, ch: char, color: Rgb888) -> core::fmt::Result {
+    pub(crate) fn write_char_colored(&mut self, ch: char, color: Rgb888) -> core::fmt::Result {
         self.write_char_colored_impl(ch, color)
             .map(|_| GLOBAL_FRAMEBUFFER.lock().flush())
     }

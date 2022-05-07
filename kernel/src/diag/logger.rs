@@ -7,9 +7,10 @@ use crate::{
     data::CrateMutex, device::serial::SERIAL1, graphics::framebuffer_term::FramebufferTextRender,
 };
 
-pub static GLOBAL_LOGGER: CrateMutex<DefaultLogger> = CrateMutex::new(DefaultLogger::new(None));
+pub(crate) static GLOBAL_LOGGER: CrateMutex<DefaultLogger> =
+    CrateMutex::new(DefaultLogger::new(None));
 
-pub struct DefaultLogger {
+pub(crate) struct DefaultLogger {
     term: Option<FramebufferTextRender>,
 }
 
@@ -60,15 +61,15 @@ impl Log for CrateMutex<DefaultLogger> {
 }
 
 impl DefaultLogger {
-    pub const fn new(term: Option<FramebufferTextRender>) -> Self {
+    pub(crate) const fn new(term: Option<FramebufferTextRender>) -> Self {
         Self { term }
     }
 
-    pub fn reinit_with_framebuffer_term(&mut self, term: FramebufferTextRender) {
+    pub(crate) fn reinit_with_framebuffer_term(&mut self, term: FramebufferTextRender) {
         self.term = Some(term)
     }
 
-    pub fn print(&mut self, args: fmt::Arguments) {
+    pub(crate) fn print(&mut self, args: fmt::Arguments) {
         if let Some(mut serial) = SERIAL1.try_lock() {
             serial
                 .write_fmt(args)
@@ -82,6 +83,10 @@ impl DefaultLogger {
 }
 
 pub(crate) fn init() {
+    GLOBAL_LOGGER
+        .lock()
+        .reinit_with_framebuffer_term(FramebufferTextRender::new(Rgb888::BLACK));
+
     if log::set_logger(&GLOBAL_LOGGER).is_ok() {
         log::set_max_level(LevelFilter::Debug)
     }

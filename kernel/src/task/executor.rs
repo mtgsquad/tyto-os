@@ -9,7 +9,7 @@ use crossbeam_queue::ArrayQueue;
 
 use super::{Task, TaskId};
 
-pub struct Executor<'a> {
+pub(crate) struct Executor<'a> {
     tasks: BTreeMap<TaskId, Task<'a>>,
     task_queue: Arc<ArrayQueue<TaskId>>,
     waker_cache: BTreeMap<TaskId, Waker>,
@@ -17,7 +17,7 @@ pub struct Executor<'a> {
 
 impl<'a> Executor<'a> {
     /// Create a new executor
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Executor {
             tasks: BTreeMap::new(),
             task_queue: Arc::new(ArrayQueue::new(100)),
@@ -25,7 +25,7 @@ impl<'a> Executor<'a> {
         }
     }
 
-    pub fn spawn(&mut self, task: Task<'a>) {
+    pub(crate) fn spawn(&mut self, task: Task<'a>) {
         let task_id = task.id;
         if self.tasks.insert(task.id, task).is_some() {
             panic!("task with same ID already in tasks");
@@ -33,7 +33,7 @@ impl<'a> Executor<'a> {
         self.task_queue.push(task_id).expect("queue full");
     }
 
-    pub fn run(&mut self) -> ! {
+    pub(crate) fn run(&mut self) -> ! {
         loop {
             self.run_ready_tasks();
             self.sleep_if_idle();
